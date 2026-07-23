@@ -303,6 +303,8 @@
 
 <div id="boot"><span id="boot-metin"></span><span class="imlec"></span><small data-c="boot-skip">GEÇMEK İÇİN TIKLAYINIZ</small></div>
 
+<iframe id="brevo-iframe" name="brevo-iframe" style="display:none" title="kayit"></iframe>
+
 <div id="parazit"></div>
 
 <div class="ekran">
@@ -404,6 +406,10 @@
         <span data-c="pen-t">Numaranız ayrıldı. Sıranızın size bağlanması için adresinizi bırakınız.</span>
         <label for="eposta" data-c="pen-l">E-posta adresi:</label>
         <input type="email" id="eposta" placeholder="ad@ornek.com" autocomplete="email">
+        <label style="display:flex; gap:7px; align-items:flex-start; margin-top:12px; font-size:11px; line-height:1.5; cursor:pointer;">
+          <input type="checkbox" id="kvkk" style="margin-top:2px; flex:0 0 auto;">
+          <span data-c="kvkk">Kuyruk İdaresi'nden e-posta almayı kabul ediyorum.</span>
+        </label>
         <div class="butonlar">
           <button class="btn95 btn-altin" id="pen-onegec" disabled title="Yakında" data-c="pen-onegec">ÖNE GEÇ…</button>
           <button class="btn95" id="tamam" data-c="pen-tamam">Sıraya Gir</button>
@@ -431,6 +437,13 @@
 <script>
 (function(){
   "use strict";
+
+  /* ---------- Kayıt hedefi (Brevo çift-onaylı/DOI formu) ----------
+     Brevo panelinde oluşturulan DOI formunun action URL'i buraya yazılır.
+     BOŞken form güvenli "mock" modda çalışır (hiçbir yere veri gitmez).
+     Doldurulunca kayıtlar Brevo'ya gider, anahtar sızmaz (form endpoint'i, API key değil). */
+  var BREVO_FORM_ACTION = "https://1d957c88.sibforms.com/serve/MUIFAPHUjsC7juPDF4m_LRBASPpvMBCsnMAV-VHK5zRCOdR08vCr8sS3RfgtapyI1n9kwNhd7UXgXZ_CtWF8G2XX7TRlUQiAH-0_sROrUtNj3Sfjh_5O-cOV7e-jzFmW_ezKQcuvOyocPAn-kuKuADmvYAqqjqIA3hQAE2H7zVAaO57F4NuQZIu0RT8uteWPlDbXUptUEw7GiQurIA==";
+  var BREVO_EMAIL_FIELD = "EMAIL";      /* Brevo formundaki e-posta alanının name'i */
 
   /* ---------- Dil (TR varsayılan; ?lang= > kayıtlı tercih > tarayıcı) ---------- */
   var DIL = (function(){
@@ -465,6 +478,7 @@
         "pen-b": "KUYRUK İdaresi — Numara Tahsisi",
         "pen-t": "Numaranız ayrıldı. Sıranızın size bağlanması için adresinizi bırakınız.",
         "pen-l": "E-posta adresi:", "pen-onegec": "ÖNE GEÇ…", "pen-tamam": "Sıraya Gir",
+        kvkk: "Kuyruk İdaresi'nden e-posta almayı kabul ediyorum.",
         fx1: "SIRA", fx2: "KARAR", fx3: "GİŞE", fx4: "KAYIT",
         foot1: "BEKLET, KUYRUK İDARESİ'NİN RESMÎ SIRASIDIR",
         foot2: "© 1994–2094 KUYRUK İDARESİ · TÜM SIRALAR SAKLIDIR",
@@ -490,6 +504,8 @@
         emin: "Emin misiniz? Numaranız bekleyene verilecektir. Onay için tekrar basınız.",
         cekildi: "Çekildiniz. Size yeni bir numara düzenlendi. Sıranızı koruyunuz.",
         hata34: "HATA 34: Adres okunamadı. Tekrar deneyiniz.",
+        hata07: "HATA 07: Onay kutusu işaretlenmelidir.",
+        doiBekle: "Numaranız ayrıldı. Doğrulamak için gelen kutunuza bakınız.",
         bagla1: "Numaranız (", bagla2: ") bu adrese bağlandı. Sıranızı korumayı unutmayınız.",
         kapatilamaz: "Bu pencere kapatılamaz. Sıra sizindir.",
         gizOrta: "sormaya devam ediyorsunuz.", gizSon: "sıranız geldiğinde öğreneceksiniz."
@@ -519,6 +535,7 @@
         "pen-b": "The Queue Authority — Number Allocation",
         "pen-t": "Your number has been reserved. Leave your address so the queue may be bound to you.",
         "pen-l": "E-mail address:", "pen-onegec": "SKIP AHEAD…", "pen-tamam": "Join the Queue",
+        kvkk: "I agree to receive e-mail from the Queue Authority.",
         fx1: "QUEUE", fx2: "DECISION", fx3: "COUNTER", fx4: "REGISTER",
         foot1: "BEKLET IS THE OFFICIAL QUEUE OF THE QUEUE AUTHORITY",
         foot2: "© 1994–2094 THE QUEUE AUTHORITY · ALL QUEUES RESERVED",
@@ -544,6 +561,8 @@
         emin: "Are you certain? Your number will be given to those who wait. Press again to confirm.",
         cekildi: "You have withdrawn. A new number has been issued to you. Hold your place.",
         hata34: "ERROR 34: The address could not be read. Try again.",
+        hata07: "ERROR 07: The consent box must be checked.",
+        doiBekle: "Your number is reserved. Check your inbox to confirm.",
         bagla1: "Your number (", bagla2: ") has been bound to this address. Do not forget to hold your place.",
         kapatilamaz: "This window cannot be closed. The queue is yours.",
         gizOrta: "you keep asking.", gizSon: "you will find out when your turn comes."
@@ -721,16 +740,31 @@
     kararDurum.textContent = S("cekildi");
   });
 
-  /* ---------- Kayıt (mock — backend bağlanınca değişecek) ---------- */
+  /* ---------- Kayıt ---------- */
   var mesaj = document.getElementById("mesaj95");
+  function brevoGonder(email){
+    /* Gizli iframe'e native POST — CORS'tan bağımsız (Brevo "Simple HTML" davranışı); DOI e-postası asıl onaydır */
+    var f = document.createElement("form");
+    f.action = BREVO_FORM_ACTION; f.method = "POST"; f.target = "brevo-iframe";
+    function ekle(n, v){ var i = document.createElement("input"); i.type = "hidden"; i.name = n; i.value = v; f.appendChild(i); }
+    ekle(BREVO_EMAIL_FIELD, email);
+    ekle("email_address_check", "");   /* Brevo bal küpü (honeypot) — boş kalmalı */
+    ekle("locale", DIL);               /* tr / en */
+    document.body.appendChild(f);
+    f.submit();
+    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 1500);
+  }
   document.getElementById("tamam").addEventListener("click", function(){
     var e = document.getElementById("eposta").value.trim();
     mesaj.style.display = "block";
-    if (!e || e.indexOf("@") < 1){
-      mesaj.textContent = S("hata34");
-      return;
+    if (!e || e.indexOf("@") < 1){ mesaj.textContent = S("hata34"); return; }
+    if (!document.getElementById("kvkk").checked){ mesaj.textContent = S("hata07"); return; }
+    if (BREVO_FORM_ACTION){
+      brevoGonder(e);
+      mesaj.textContent = S("doiBekle");
+    } else {
+      mesaj.textContent = S("bagla1") + nokta(biletNo) + S("bagla2");
     }
-    mesaj.textContent = S("bagla1") + nokta(biletNo) + S("bagla2");
   });
   document.querySelector(".pencere .x").addEventListener("click", function(){
     mesaj.style.display = "block";
