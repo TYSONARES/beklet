@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEKLET — Sıranız gelecek.</title>
+<!--
+  ................................................................
+  .  GİŞE MEMURU NOTU / 1994.09.09                               .
+  .  Sıra bozulmasın. Kimse anlatmasın.                          .
+  .  Zarflar açılış gününe kadar mühürlü kalacak.                .
+  .  — K.İ. Arşiv Birimi                                         .
+  ................................................................
+-->
+<style>
+  :root{
+    --zemin:#0a0a08;
+    --amber:#ffb000;
+    --amber-los:#8a6200;
+    --amber-cok-los:#4a3500;
+    --kirmizi:#ff3b30;
+    --gri95:#c0c0c0;
+    --gri95-koyu:#808080;
+    --gri95-acik:#ffffff;
+    --termal:#f4efe4;
+    --murekkep:#2b2b26;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{background:#000;}
+  body{
+    background:var(--zemin);
+    color:var(--amber);
+    font-family:"Courier New", ui-monospace, "Cascadia Mono", Menlo, monospace;
+    min-height:100vh;
+    overflow-x:hidden;
+    cursor:default;
+  }
+
+  /* ---------- CRT katmanı ---------- */
+  .crt::before{
+    content:"";
+    position:fixed; inset:0;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.22) 3px,
+      rgba(0,0,0,0) 4px
+    );
+    pointer-events:none; z-index:60;
+  }
+  .crt::after{
+    content:"";
+    position:fixed; inset:0;
+    background:radial-gradient(ellipse at center,
+      rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);
+    pointer-events:none; z-index:61;
+  }
+  @keyframes flicker{
+    0%,100%{opacity:1;} 96%{opacity:1;} 97%{opacity:.86;} 98%{opacity:1;} 99%{opacity:.93;}
+  }
+  .ekran{animation:flicker 7s infinite; position:relative; z-index:1;
+    max-width:820px; margin:0 auto; padding:0 20px 80px;}
+  @media (prefers-reduced-motion: reduce){
+    .ekran, .glitch, .canli-isik, .imlec{animation:none !important;}
+    #parazit{display:none;}
+  }
+
+  /* ---------- Teletekst iskeleti (harman: varyant-teletekst'ten) ---------- */
+  .tt-bant{
+    display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:10px 2px 8px; font-size:13px; letter-spacing:.08em;
+    border-bottom:1px solid var(--amber-cok-los);
+  }
+  .tt-bant .no{color:var(--amber); font-weight:bold;}
+  .tt-bant .ad{color:var(--amber-los); letter-spacing:.2em;}
+  .tt-bant .saat{color:var(--amber); font-variant-numeric:tabular-nums;}
+  .tt-bant .dil a{color:var(--amber-los); text-decoration:none; padding:0 2px;}
+  .tt-bant .dil a.aktif{color:var(--amber); font-weight:bold;}
+  .sayfa{position:relative;}
+  .sayfa-no{
+    position:absolute; top:-16px; right:0; font-size:11px; letter-spacing:.15em;
+    color:var(--zemin); background:var(--amber-los); padding:1px 8px; font-weight:bold;
+  }
+  .sayfa-baslik{
+    display:inline-block; color:var(--zemin); background:var(--amber);
+    padding:2px 12px; font-weight:bold; letter-spacing:.25em; font-size:14px;
+    transform:scaleY(1.55); transform-origin:top left; margin-bottom:26px;
+  }
+  #parazit{
+    position:fixed; left:0; right:0; top:-10%; height:3px; z-index:62;
+    pointer-events:none; opacity:0;
+    background:repeating-linear-gradient(90deg,
+      #fff 0 2px, #000 2px 3px, var(--amber) 3px 5px, #000 5px 9px,
+      #ffdd88 9px 10px, #000 10px 14px);
+    animation:kar 9s linear infinite;
+  }
+  @keyframes kar{
+    0%,88%{opacity:0; top:-10%;}
+    89%{opacity:.9; top:12%;}
+    90%{opacity:.7; top:46%;}
+    91%{opacity:.9; top:78%;}
+    92%,100%{opacity:0; top:110%;}
+  }
+  .fastext{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-top:70px;}
+  .fastext a{
+    display:block; text-align:center; padding:9px 4px; font-size:12px;
+    font-weight:bold; letter-spacing:.15em; text-decoration:none; color:#000;
+  }
+  .fastext a:focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
+  .fx-kirmizi{background:#ff3b30;}
+  .fx-yesil{background:#27c840;}
+  .fx-sari{background:#ffb000;}
+  .fx-mavi{background:#2222ee; color:#fff !important;}
+
+  .amber-glow{text-shadow:0 0 6px rgba(255,176,0,.55), 0 0 24px rgba(255,176,0,.18);}
+
+  /* ---------- Boot overlay ---------- */
+  #boot{
+    position:fixed; inset:0; background:#000; z-index:100;
+    padding:8vh 8vw; font-size:15px; line-height:1.9;
+    color:var(--amber); white-space:pre-wrap;
+    transition:opacity .8s;
+  }
+  #boot .imlec{display:inline-block; width:.6em; height:1em;
+    background:var(--amber); vertical-align:text-bottom;
+    animation:yanip .8s steps(1) infinite;}
+  @keyframes yanip{50%{opacity:0;}}
+  #boot small{color:var(--amber-los); display:block; margin-top:4vh; letter-spacing:.2em;}
+
+  /* ---------- Üst bant ---------- */
+  header{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:34px 0 10px; border-bottom:1px solid var(--amber-cok-los);
+  }
+  .logotype{font-size:clamp(22px,4.5vw,34px); letter-spacing:.42em; font-weight:bold;}
+  .logotype .kuyruk-cizgi{position:relative;}
+  .logotype .kuyruk-cizgi::after{
+    content:""; position:absolute; left:12%; bottom:-7px;
+    width:55%; height:2px; background:var(--amber);
+  }
+  .durum{display:flex; align-items:center; gap:10px; font-size:12px; letter-spacing:.25em; color:var(--amber-los);}
+  .canli-isik{width:9px;height:9px;border-radius:50%;background:var(--kirmizi);
+    box-shadow:0 0 8px var(--kirmizi); animation:yanip 1.6s steps(1) infinite;}
+
+  /* ---------- Numaratör ---------- */
+  .numarator{
+    margin-top:56px; text-align:center;
+  }
+  .numarator .etiket{font-size:12px; letter-spacing:.35em; color:var(--amber-los); margin-bottom:14px;}
+  .numarator .sayi{
+    font-size:clamp(44px,10vw,84px); font-variant-numeric:tabular-nums;
+    letter-spacing:.06em; line-height:1;
+  }
+  .cift{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:60px;}
+  @media(max-width:640px){.cift{grid-template-columns:1fr; gap:40px;}}
+
+  /* ---------- Termal bilet ---------- */
+  .bilet-yuva{display:flex; justify-content:center; margin-top:8px; perspective:600px;}
+  .bilet{
+    background:var(--termal); color:var(--murekkep);
+    width:min(300px,86vw); padding:26px 22px 30px;
+    text-align:center; position:relative;
+    box-shadow:0 10px 40px rgba(0,0,0,.7);
+    transform-origin:top center;
+    animation:basil 2.2s cubic-bezier(.2,.8,.3,1) .4s backwards;
+  }
+  @keyframes basil{
+    0%{transform:translateY(-105%);}
+    70%{transform:translateY(4%);}
+    100%{transform:translateY(0);}
+  }
+  .bilet::before,.bilet::after{
+    content:""; position:absolute; left:0; right:0; height:8px;
+    background-image:radial-gradient(circle at 5px 4px, var(--zemin) 4px, transparent 4.5px);
+    background-size:14px 8px; background-repeat:repeat-x;
+  }
+  .bilet::before{top:-1px;}
+  .bilet::after{bottom:-1px; transform:scaleY(-1);}
+  .bilet .kurum{font-size:10px; letter-spacing:.3em; margin-bottom:6px;}
+  .bilet .cizgi{border-top:1px dashed var(--murekkep); margin:10px 0; opacity:.5;}
+  .bilet .sira-etiket{font-size:11px; letter-spacing:.25em;}
+  .bilet .sira-no{font-size:clamp(30px,7vw,42px); font-weight:bold;
+    font-variant-numeric:tabular-nums; margin:6px 0 2px; letter-spacing:.03em;}
+  .bilet .dipnot{font-size:10px; margin-top:8px; opacity:.75; letter-spacing:.08em;}
+  .bilet .barkod{margin-top:12px; height:34px;
+    background:repeating-linear-gradient(90deg,
+      var(--murekkep) 0 2px, transparent 2px 4px,
+      var(--murekkep) 4px 7px, transparent 7px 9px,
+      var(--murekkep) 9px 10px, transparent 10px 14px);}
+
+  /* ---------- İstatistik satırı ---------- */
+  .istatistik{
+    margin-top:54px; text-align:center; font-size:13px; line-height:2.2;
+    color:var(--amber-los); letter-spacing:.12em;
+  }
+  .istatistik b{color:var(--amber); font-weight:normal;}
+
+  /* ---------- Saatlik karar paneli ---------- */
+  .karar{margin-top:70px; text-align:center;}
+  .karar .etiket{font-size:12px; letter-spacing:.35em; color:var(--amber-los); margin-bottom:18px;}
+  .karar-butonlar{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:12px; max-width:600px; margin:0 auto;}
+  @media(max-width:640px){.karar-butonlar{grid-template-columns:1fr;}}
+  .karar-btn{
+    font-family:inherit; font-size:15px; letter-spacing:.22em; padding:22px 10px;
+    background:transparent; border:1px solid var(--amber-los); color:var(--amber); cursor:pointer;
+  }
+  .karar-btn.birincil{
+    background:var(--amber); color:var(--zemin); font-weight:bold; font-size:21px;
+    border-color:var(--amber); box-shadow:0 6px 0 var(--amber-cok-los);
+  }
+  .karar-btn.birincil:active{transform:translateY(3px); box-shadow:0 3px 0 var(--amber-cok-los);}
+  .karar-btn.altin{border-color:#d4a017; color:#d4a017;}
+  .karar-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .karar-durum{margin-top:16px; font-size:12px; color:var(--amber-los); letter-spacing:.1em; min-height:18px;}
+
+  /* ---------- Geri sayım ---------- */
+  .gise-blok{margin-top:80px; text-align:center; border:1px solid var(--amber-cok-los); padding:44px 20px 50px;}
+  .gise-blok .etiket{font-size:12px; letter-spacing:.35em; color:var(--amber-los);}
+  .glitch{
+    font-size:clamp(30px,7vw,52px); letter-spacing:.3em; margin:16px 0 8px;
+    position:relative; display:inline-block;
+  }
+  @keyframes rgbkay{
+    0%,93%,100%{text-shadow:0 0 6px rgba(255,176,0,.55);}
+    94%{text-shadow:-3px 0 #ff3b30, 3px 0 #00e5ff;}
+    96%{text-shadow:3px 0 #ff3b30, -3px 0 #00e5ff; transform:translateX(1px);}
+    97%{text-shadow:0 0 6px rgba(255,176,0,.55); transform:none;}
+  }
+  .glitch{animation:rgbkay 5s infinite;}
+  .geri-sayim{font-size:clamp(22px,5vw,34px); font-variant-numeric:tabular-nums; letter-spacing:.15em; margin-top:18px;}
+  .gise-blok .alt{font-size:12px; color:var(--amber-los); margin-top:16px; letter-spacing:.2em;}
+
+  /* ---------- Marquee anons ---------- */
+  .anons{
+    margin-top:70px; border-top:1px solid var(--amber-cok-los); border-bottom:1px solid var(--amber-cok-los);
+    overflow:hidden; white-space:nowrap; padding:10px 0; font-size:13px; letter-spacing:.18em;
+  }
+  .anons span{display:inline-block; padding-left:100%; animation:kay 22s linear infinite;}
+  @keyframes kay{to{transform:translateX(-100%);}}
+
+  /* ---------- SSS ---------- */
+  .sss{margin-top:80px;}
+  .sss h2{font-size:13px; letter-spacing:.35em; color:var(--amber-los); margin-bottom:24px; text-align:center;}
+  .sss details{border:1px solid var(--amber-cok-los); margin-bottom:12px;}
+  .sss summary{
+    list-style:none; cursor:pointer; padding:16px 18px;
+    font-size:14px; letter-spacing:.1em;
+  }
+  .sss summary::before{content:"▸ "; color:var(--amber-los);}
+  .sss details[open] summary::before{content:"▾ ";}
+  .sss .cevap{padding:0 18px 18px; font-size:13px; color:var(--amber-los); line-height:1.9; letter-spacing:.05em;}
+
+  /* ---------- Win95 diyalog ---------- */
+  .kayit{display:flex; justify-content:center; margin-top:90px;}
+  .pencere{
+    width:min(430px,92vw);
+    background:var(--gri95);
+    border:2px solid;
+    border-color:var(--gri95-acik) var(--gri95-koyu) var(--gri95-koyu) var(--gri95-acik);
+    box-shadow:6px 6px 0 rgba(0,0,0,.5);
+    font-family:Tahoma, "MS Sans Serif", Verdana, sans-serif;
+    color:#000;
+  }
+  .pencere .baslik{
+    background:linear-gradient(90deg,#000080,#1084d0);
+    color:#fff; font-size:12px; font-weight:bold;
+    padding:4px 6px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .pencere .baslik .x{
+    width:16px;height:14px; background:var(--gri95);
+    border:1px solid; border-color:var(--gri95-acik) var(--gri95-koyu) var(--gri95-koyu) var(--gri95-acik);
+    color:#000; font-size:10px; line-height:12px; text-align:center; cursor:pointer;
+  }
+  .pencere .icerik{padding:18px 16px 20px; font-size:12px; line-height:1.7;}
+  .pencere label{display:block; margin:12px 0 4px;}
+  .pencere input[type=email]{
+    width:100%; padding:5px 6px; font-size:13px;
+    border:2px solid; border-color:var(--gri95-koyu) var(--gri95-acik) var(--gri95-acik) var(--gri95-koyu);
+    background:#fff; font-family:inherit;
+  }
+  .pencere .butonlar{display:flex; gap:8px; justify-content:flex-end; margin-top:18px;}
+  .btn95{
+    min-width:96px; padding:6px 14px; font-size:12px; font-family:inherit;
+    background:var(--gri95); cursor:pointer;
+    border:2px solid; border-color:var(--gri95-acik) var(--gri95-koyu) var(--gri95-koyu) var(--gri95-acik);
+  }
+  .btn95:active{border-color:var(--gri95-koyu) var(--gri95-acik) var(--gri95-acik) var(--gri95-koyu);}
+  .btn95[disabled]{color:var(--gri95-koyu); text-shadow:1px 1px 0 #fff; cursor:not-allowed;}
+  .btn-altin{background:linear-gradient(#ffe9a8,#d4a017); font-weight:bold;}
+  #mesaj95{display:none; margin-top:14px; padding:10px;
+    border:1px solid var(--gri95-koyu); background:#ffffe1; font-size:12px;}
+
+  /* ---------- Footer ---------- */
+  footer{
+    margin-top:100px; text-align:center; font-size:11px;
+    color:var(--amber-cok-los); letter-spacing:.25em; line-height:2.4;
+  }
+  footer a{color:var(--amber-los); text-decoration:none; border-bottom:1px dotted var(--amber-los);}
+</style>
+</head>
+<body class="crt">
+
+<div id="boot"><span id="boot-metin"></span><span class="imlec"></span><small data-c="boot-skip">GEÇMEK İÇİN TIKLAYINIZ</small></div>
+
+<div id="parazit"></div>
+
+<div class="ekran">
+
+  <div class="tt-bant" role="banner">
+    <span class="no">S.100</span>
+    <span class="ad" data-c="ttad">KUYRUK İDARESİ · TELETEKST SERVİSİ</span>
+    <span class="saat" id="tt-saat">··.··.···· ··:··:··</span>
+    <span class="dil"><a href="#" id="dil-tr">TR</a>·<a href="#" id="dil-en">EN</a></span>
+  </div>
+
+  <header>
+    <div class="logotype amber-glow">BEKL<span class="kuyruk-cizgi">E</span>T</div>
+    <div class="durum"><span class="canli-isik"></span><span data-c="durum">GİŞE KAPALI</span></div>
+  </header>
+
+  <section class="sayfa" id="s101" style="margin-top:56px;">
+    <span class="sayfa-no">S.101</span>
+    <span class="sayfa-baslik" data-c="b101">NUMARATÖR</span>
+    <div class="cift" style="margin-top:0;">
+    <div class="numarator">
+      <div class="etiket" data-c="simdiki-e">ŞİMDİKİ NUMARA</div>
+      <div class="sayi amber-glow" id="simdiki">—</div>
+    </div>
+    <div class="numarator">
+      <div class="etiket" data-c="sizin-e">SİZİN NUMARANIZ</div>
+      <div class="bilet-yuva">
+        <div class="bilet">
+          <div class="kurum" data-c="kurum">KUYRUK İDARESİ</div>
+          <div class="cizgi"></div>
+          <div class="sira-etiket" data-c="sirano-e">SIRA NO</div>
+          <div class="sira-no" id="bilet-no">·······</div>
+          <div class="cizgi"></div>
+          <div class="dipnot" data-c="dipnot">BU BİLET KİŞİYE ÖZELDİR.<br>SIRANIZI KORUYUNUZ.</div>
+          <div class="barkod"></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="istatistik">
+    <span data-c="ist1">ÖNÜNÜZDEKİ KİŞİ SAYISI:</span> <b id="onunuzde">—</b> <span data-c="ist2">· ŞU AN SIRADA BEKLEYEN:</span> <b id="bekleyen">—</b><br>
+    <span data-c="ist3">TAHMİNİ BEKLEME SÜRESİ:</span> <b id="tahmin">HESAPLANIYOR…</b><br>
+    <span style="font-size:11px;" data-c="ist4">TAHMİN, GİŞE MEMURUNUN ÇALIŞMA TEMPOSUNA GÖRE DEĞİŞEBİLİR.</span>
+  </section>
+
+  <section class="karar sayfa" id="s102" style="text-align:left;">
+    <span class="sayfa-no">S.102</span>
+    <span class="sayfa-baslik" data-c="b102">SAATLİK KARAR HAKKI</span>
+    <div style="text-align:center;">
+    <div class="karar-butonlar">
+      <button class="karar-btn birincil" id="btn-beklet">BEKLET</button>
+      <button class="karar-btn" id="btn-cekil" data-c="cekil">ÇEKİL</button>
+      <button class="karar-btn altin" id="btn-onegec" disabled
+        title="Bu sorunun cevabı bazılarınızı rahatsız edecektir." data-c="onegec">ÖNE GEÇ…</button>
+    </div>
+    <div class="karar-durum" id="karar-durum">Bu saatin hakkı hazır. Bir karar veriniz.</div>
+    <div class="karar-durum" id="karar-gloss" style="min-height:0; font-style:italic;" data-c="gloss"></div>
+    </div>
+  </section>
+
+  <section class="gise-blok sayfa" id="s103">
+    <span class="sayfa-no">S.103</span>
+    <div class="etiket" data-c="acilis-e">AÇILIŞA KALAN</div>
+    <div class="glitch amber-glow" data-c="gise-ad">GİŞE</div>
+    <div class="geri-sayim" id="geri-sayim">—— : —— : —— : ——</div>
+    <div class="alt" data-c="gise-alt">09.09.2026 · SAAT 09:09 · İLK 60 SANİYE HERKESE YAYINLANIR</div>
+  </section>
+
+  <div class="anons"><span id="anons-metin">ANONS YÜKLENİYOR…</span></div>
+
+  <section class="sss sayfa" id="s104">
+    <span class="sayfa-no">S.104</span>
+    <h2 data-c="sss-b">SIKÇA SORULAN SORULAR</h2>
+    <details>
+      <summary data-c="s1">Bu neyin sırası?</summary>
+      <div class="cevap" data-c="c1">Sıranız geldiğinde öğreneceksiniz.</div>
+    </details>
+    <details>
+      <summary data-c="s2">Gişede ne var?</summary>
+      <div class="cevap" data-c="c2">Gişeye ulaşan bilir. Ulaşan anlatmazsa, bilinmez.</div>
+    </details>
+    <details>
+      <summary data-c="s3">Sıramı kaybedebilir miyim?</summary>
+      <div class="cevap" data-c="c3">Evet. Sırasını korumayanın yeri, bekleyene verilir.</div>
+    </details>
+    <details>
+      <summary data-c="s4">Öne geçilebilir mi?</summary>
+      <div class="cevap" data-c="c4">Bu sorunun cevabı bazılarınızı rahatsız edecektir.</div>
+    </details>
+  </section>
+
+  <section class="kayit sayfa" id="s105">
+    <span class="sayfa-no">S.105</span>
+    <div class="pencere">
+      <div class="baslik"><span data-c="pen-b">KUYRUK İdaresi — Numara Tahsisi</span><span class="x">×</span></div>
+      <div class="icerik">
+        <span data-c="pen-t">Numaranız ayrıldı. Sıranızın size bağlanması için adresinizi bırakınız.</span>
+        <label for="eposta" data-c="pen-l">E-posta adresi:</label>
+        <input type="email" id="eposta" placeholder="ad@ornek.com" autocomplete="email">
+        <div class="butonlar">
+          <button class="btn95 btn-altin" id="pen-onegec" disabled title="Yakında" data-c="pen-onegec">ÖNE GEÇ…</button>
+          <button class="btn95" id="tamam" data-c="pen-tamam">Sıraya Gir</button>
+        </div>
+        <div id="mesaj95"></div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="fastext" aria-label="Hızlı sayfa geçişi">
+    <a class="fx-kirmizi" href="#s101" data-c="fx1">SIRA</a>
+    <a class="fx-yesil" href="#s102" data-c="fx2">KARAR</a>
+    <a class="fx-sari" href="#s103" data-c="fx3">GİŞE</a>
+    <a class="fx-mavi" href="#s105" data-c="fx4">KAYIT</a>
+  </nav>
+
+  <footer>
+    <span data-c="foot1">BEKLET, KUYRUK İDARESİ'NİN RESMÎ SIRASIDIR</span><br>
+    <span data-c="foot2">© 1994–2094 KUYRUK İDARESİ · TÜM SIRALAR SAKLIDIR</span><br>
+    <a href="#" id="gizli" data-c="gizli">gişede ne var?</a>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Dil (TR varsayılan; ?lang= > kayıtlı tercih > tarayıcı) ---------- */
+  var DIL = (function(){
+    var q = null;
+    try { q = new URLSearchParams(location.search).get("lang"); } catch(e){}
+    if (q === "en" || q === "tr") return q;
+    try { var s = localStorage.getItem("kuyruk-dil"); if (s === "en" || s === "tr") return s; } catch(e){}
+    return ((navigator.language || "tr").toLowerCase().indexOf("tr") === 0) ? "tr" : "en";
+  })();
+
+  var SOZLUK = {
+    tr: {
+      baslik: "BEKLET — Sıranız gelecek.",
+      attr: { eposta: "ad@ornek.com", onegec: "Bu sorunun cevabı bazılarınızı rahatsız edecektir.", penOnegec: "Yakında" },
+      html: { dipnot: "BU BİLET KİŞİYE ÖZELDİR.<br>SIRANIZI KORUYUNUZ." },
+      dom: {
+        "boot-skip": "GEÇMEK İÇİN TIKLAYINIZ",
+        ttad: "KUYRUK İDARESİ · TELETEKST SERVİSİ",
+        durum: "GİŞE KAPALI",
+        b101: "NUMARATÖR", "simdiki-e": "ŞİMDİKİ NUMARA", "sizin-e": "SİZİN NUMARANIZ",
+        kurum: "KUYRUK İDARESİ", "sirano-e": "SIRA NO",
+        ist1: "ÖNÜNÜZDEKİ KİŞİ SAYISI:", ist2: "· ŞU AN SIRADA BEKLEYEN:",
+        ist3: "TAHMİNİ BEKLEME SÜRESİ:", ist4: "TAHMİN, GİŞE MEMURUNUN ÇALIŞMA TEMPOSUNA GÖRE DEĞİŞEBİLİR.",
+        b102: "SAATLİK KARAR HAKKI", cekil: "ÇEKİL", onegec: "ÖNE GEÇ…", gloss: "",
+        "acilis-e": "AÇILIŞA KALAN", "gise-ad": "GİŞE",
+        "gise-alt": "09.09.2026 · SAAT 09:09 · İLK 60 SANİYE HERKESE YAYINLANIR",
+        "sss-b": "SIKÇA SORULAN SORULAR",
+        s1: "Bu neyin sırası?", c1: "Sıranız geldiğinde öğreneceksiniz.",
+        s2: "Gişede ne var?", c2: "Gişeye ulaşan bilir. Ulaşan anlatmazsa, bilinmez.",
+        s3: "Sıramı kaybedebilir miyim?", c3: "Evet. Sırasını korumayanın yeri, bekleyene verilir.",
+        s4: "Öne geçilebilir mi?", c4: "Bu sorunun cevabı bazılarınızı rahatsız edecektir.",
+        "pen-b": "KUYRUK İdaresi — Numara Tahsisi",
+        "pen-t": "Numaranız ayrıldı. Sıranızın size bağlanması için adresinizi bırakınız.",
+        "pen-l": "E-posta adresi:", "pen-onegec": "ÖNE GEÇ…", "pen-tamam": "Sıraya Gir",
+        fx1: "SIRA", fx2: "KARAR", fx3: "GİŞE", fx4: "KAYIT",
+        foot1: "BEKLET, KUYRUK İDARESİ'NİN RESMÎ SIRASIDIR",
+        foot2: "© 1994–2094 KUYRUK İDARESİ · TÜM SIRALAR SAKLIDIR",
+        gizli: "gişede ne var?"
+      },
+      js: {
+        boot: ["KUYRUK İDARESİ TERMİNAL v0.94", "BAĞLANIYOR ... 56K",
+               "HAT MEŞGUL. TEKRAR DENENİYOR ...", "BAĞLANTI KURULDU.", "NUMARATÖR AKTİF.", ""],
+        yil: " YIL ", ay: " AY", hesap: "HESAPLANIYOR…", acildi: "GİŞE AÇILDI.",
+        anons: [
+          "DİKKAT DİKKAT ··· SIRASINI KORUMAYANIN YERİ BEKLEYENE VERİLİR ···",
+          "GİŞE MEMURU BUGÜN GELMEDİ ··· SIRA İŞLEMEYE DEVAM EDİYOR ···",
+          "ZARFLAR MÜHÜRLENDİ ··· İLK 100 KİŞİYE TESLİM EDİLECEKTİR ···",
+          "BUGÜN ÖNE GEÇEN OLMADI ··· HENÜZ ···",
+          "KUYRUKTA SESSİZ OLUNUZ ··· GİŞE SİZİ DUYUYOR ···",
+          "KAYIP BİLET İHBARLARI DEĞERLENDİRMEYE ALINMAZ ···",
+          "SIRANIZ GELECEK ··· HERKESİN SIRASI GELECEK ···",
+          "ARŞİV NOTU: 1997 YAYINININ KAYDI HÂLÂ KAYIP ···"
+        ],
+        hazir: "Bu saatin hakkı hazır. Bir karar veriniz.",
+        kullanildi: "Bu saatin hakkı kullanıldı. Sonraki hak: ",
+        kaydedildi: "Karar kaydedildi. Sıranız korundu.",
+        emin: "Emin misiniz? Numaranız bekleyene verilecektir. Onay için tekrar basınız.",
+        cekildi: "Çekildiniz. Size yeni bir numara düzenlendi. Sıranızı koruyunuz.",
+        hata34: "HATA 34: Adres okunamadı. Tekrar deneyiniz.",
+        bagla1: "Numaranız (", bagla2: ") bu adrese bağlandı. Sıranızı korumayı unutmayınız.",
+        kapatilamaz: "Bu pencere kapatılamaz. Sıra sizindir.",
+        gizOrta: "sormaya devam ediyorsunuz.", gizSon: "sıranız geldiğinde öğreneceksiniz."
+      }
+    },
+    en: {
+      baslik: "BEKLET — Your turn will come.",
+      attr: { eposta: "name@example.com", onegec: "The answer to this question will unsettle some of you.", penOnegec: "Soon" },
+      html: { dipnot: "THIS TICKET IS PERSONAL.<br>HOLD YOUR PLACE." },
+      dom: {
+        "boot-skip": "CLICK TO PROCEED",
+        ttad: "THE QUEUE AUTHORITY · TELETEXT SERVICE",
+        durum: "COUNTER CLOSED",
+        b101: "NUMBERS", "simdiki-e": "NOW SERVING", "sizin-e": "YOUR NUMBER",
+        kurum: "THE QUEUE AUTHORITY", "sirano-e": "QUEUE NO",
+        ist1: "PERSONS AHEAD OF YOU:", ist2: "· CURRENTLY WAITING:",
+        ist3: "ESTIMATED WAITING TIME:", ist4: "ESTIMATES MAY VARY WITH THE CLERK'S WORKING PACE.",
+        b102: "HOURLY DECISION ENTITLEMENT", cekil: "WITHDRAW", onegec: "SKIP AHEAD…",
+        gloss: "beklet (Turkish, verb): \"to make one wait.\"",
+        "acilis-e": "OPENING IN", "gise-ad": "THE COUNTER",
+        "gise-alt": "09.09.2026 · 09:09 · THE FIRST 60 SECONDS WILL BE BROADCAST TO ALL",
+        "sss-b": "FREQUENTLY ASKED QUESTIONS",
+        s1: "What is this a queue for?", c1: "You will find out when your turn comes.",
+        s2: "What is at the counter?", c2: "Those who reach the counter know. If they do not tell, it is not known.",
+        s3: "Can I lose my place?", c3: "Yes. The place of those who fail to hold it is given to those who wait.",
+        s4: "Can one skip ahead?", c4: "The answer to this question will unsettle some of you.",
+        "pen-b": "The Queue Authority — Number Allocation",
+        "pen-t": "Your number has been reserved. Leave your address so the queue may be bound to you.",
+        "pen-l": "E-mail address:", "pen-onegec": "SKIP AHEAD…", "pen-tamam": "Join the Queue",
+        fx1: "QUEUE", fx2: "DECISION", fx3: "COUNTER", fx4: "REGISTER",
+        foot1: "BEKLET IS THE OFFICIAL QUEUE OF THE QUEUE AUTHORITY",
+        foot2: "© 1994–2094 THE QUEUE AUTHORITY · ALL QUEUES RESERVED",
+        gizli: "what is at the counter?"
+      },
+      js: {
+        boot: ["QUEUE AUTHORITY TERMINAL v0.94", "CONNECTING ... 56K",
+               "LINE BUSY. RETRYING ...", "CONNECTION ESTABLISHED.", "NUMERATOR ACTIVE.", ""],
+        yil: " YRS ", ay: " MOS", hesap: "CALCULATING…", acildi: "THE COUNTER IS OPEN.",
+        anons: [
+          "ATTENTION ATTENTION ··· PLACES NOT HELD WILL BE GIVEN TO THOSE WHO WAIT ···",
+          "THE CLERK DID NOT COME IN TODAY ··· THE QUEUE CONTINUES TO ADVANCE ···",
+          "THE ENVELOPES HAVE BEEN SEALED ··· TO BE ISSUED TO THE FIRST 100 ···",
+          "NO ONE SKIPPED AHEAD TODAY ··· YET ···",
+          "REMAIN SILENT IN THE QUEUE ··· THE COUNTER HEARS YOU ···",
+          "REPORTS OF LOST TICKETS WILL NOT BE PROCESSED ···",
+          "YOUR TURN WILL COME ··· EVERYONE'S TURN WILL COME ···",
+          "ARCHIVE NOTE: THE 1997 BROADCAST REMAINS LOST ···"
+        ],
+        hazir: "This hour's entitlement is ready. Make a decision.",
+        kullanildi: "This hour's entitlement has been used. Next: ",
+        kaydedildi: "Decision recorded. Your place has been held.",
+        emin: "Are you certain? Your number will be given to those who wait. Press again to confirm.",
+        cekildi: "You have withdrawn. A new number has been issued to you. Hold your place.",
+        hata34: "ERROR 34: The address could not be read. Try again.",
+        bagla1: "Your number (", bagla2: ") has been bound to this address. Do not forget to hold your place.",
+        kapatilamaz: "This window cannot be closed. The queue is yours.",
+        gizOrta: "you keep asking.", gizSon: "you will find out when your turn comes."
+      }
+    }
+  };
+  function S(k){ return SOZLUK[DIL].js[k]; }
+  function dilUygula(){
+    var M = SOZLUK[DIL];
+    document.documentElement.lang = DIL;
+    document.title = M.baslik;
+    var eller = document.querySelectorAll("[data-c]");
+    for (var i = 0; i < eller.length; i++){
+      var k = eller[i].getAttribute("data-c");
+      if (M.html[k] !== undefined) eller[i].innerHTML = M.html[k];
+      else if (M.dom[k] !== undefined) eller[i].textContent = M.dom[k];
+    }
+    document.getElementById("btn-onegec").title = M.attr.onegec;
+    document.getElementById("pen-onegec").title = M.attr.penOnegec;
+    document.getElementById("eposta").placeholder = M.attr.eposta;
+    document.getElementById("dil-tr").className = (DIL === "tr") ? "aktif" : "";
+    document.getElementById("dil-en").className = (DIL === "en") ? "aktif" : "";
+  }
+  dilUygula();
+
+  /* ---------- Boot dizisi ---------- */
+  var bootSatirlar = S("boot");
+  var boot = document.getElementById("boot");
+  var bootMetin = document.getElementById("boot-metin");
+  var si = 0, ki = 0, bitti = false;
+  function yaz(){
+    if (bitti) return;
+    if (si >= bootSatirlar.length){ kapat(); return; }
+    var satir = bootSatirlar[si];
+    if (ki <= satir.length){
+      bootMetin.textContent = bootSatirlar.slice(0, si).join("\n") + "\n" + satir.slice(0, ki);
+      ki++;
+      setTimeout(yaz, 24);
+    } else {
+      si++; ki = 0;
+      setTimeout(yaz, si === 3 ? 700 : 260);
+    }
+  }
+  function kapat(){
+    if (bitti) return;
+    bitti = true;
+    boot.style.opacity = "0";
+    setTimeout(function(){ boot.style.display = "none"; }, 850);
+  }
+  boot.addEventListener("click", kapat);
+  setTimeout(yaz, 350);
+  setTimeout(kapat, 9000); /* emniyet: en geç 9 sn'de aç */
+
+  /* ---------- Sayı biçimi ---------- */
+  function nokta(n){
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  /* ---------- Şimdiki numara: zamana bağlı, herkesde aynı ---------- */
+  var EPOK = Date.UTC(2026, 6, 1, 0, 0, 0); /* 1 Tem 2026 */
+  function simdikiNumara(){
+    var s = Math.floor((Date.now() - EPOK) / 7000); /* 7 sn'de bir kişi */
+    return 217383 + Math.max(0, s);
+  }
+
+  /* ---------- Bilet numarası: kalıcı ---------- */
+  var biletNo;
+  try {
+    biletNo = parseInt(localStorage.getItem("kuyruk-bilet"), 10);
+  } catch(e){ biletNo = NaN; }
+  if (!biletNo || isNaN(biletNo)){
+    biletNo = simdikiNumara() + 1200000 + Math.floor(Math.random() * 3700000);
+    try { localStorage.setItem("kuyruk-bilet", String(biletNo)); } catch(e){}
+  }
+
+  var simdikiEl = document.getElementById("simdiki");
+  var biletEl = document.getElementById("bilet-no");
+  var onunuzdeEl = document.getElementById("onunuzde");
+  var tahminEl = document.getElementById("tahmin");
+
+  var bekleyenEl = document.getElementById("bekleyen");
+  function tazele(){
+    var s = simdikiNumara();
+    if (biletNo <= s) biletNo = s + 999999; /* bilet asla geçilmiş olamaz */
+    simdikiEl.textContent = nokta(s);
+    biletEl.textContent = nokta(biletNo);
+    var fark = biletNo - s;
+    onunuzdeEl.textContent = nokta(fark);
+    bekleyenEl.textContent = nokta(1284006 + Math.floor((Date.now() - EPOK) / 11000));
+    /* 7 sn/kişi → saniye cinsinden bekleme */
+    var sn = fark * 7;
+    var yil = Math.floor(sn / 31557600);
+    var ay  = Math.floor((sn % 31557600) / 2629800);
+    tahminEl.textContent = yil > 0 ? (yil + S("yil") + ay + S("ay")) : (ay + S("ay"));
+  }
+  tazele();
+  setInterval(tazele, 7000);
+
+  /* ---------- Geri sayım: 09.09.2026 09:09:09 TR ---------- */
+  var HEDEF = Date.parse("2026-09-09T09:09:09+03:00");
+  var geriEl = document.getElementById("geri-sayim");
+  function iki(n){ return (n < 10 ? "0" : "") + n; }
+  function sayim(){
+    var k = HEDEF - Date.now();
+    if (k <= 0){ geriEl.textContent = S("acildi"); return; }
+    var g = Math.floor(k / 86400000);
+    var sa = Math.floor(k % 86400000 / 3600000);
+    var dk = Math.floor(k % 3600000 / 60000);
+    var sn = Math.floor(k % 60000 / 1000);
+    geriEl.textContent = iki(g) + " : " + iki(sa) + " : " + iki(dk) + " : " + iki(sn);
+    if (k < 86400000) geriEl.style.color = "var(--kirmizi)";
+  }
+  sayim();
+  setInterval(sayim, 1000);
+
+  /* ---------- Teletekst saat bandı ---------- */
+  var ttSaatEl = document.getElementById("tt-saat");
+  function ttSaat(){
+    var d = new Date();
+    ttSaatEl.textContent = iki(d.getDate()) + "." + iki(d.getMonth() + 1) + "." + d.getFullYear() +
+      " " + iki(d.getHours()) + ":" + iki(d.getMinutes()) + ":" + iki(d.getSeconds());
+  }
+  ttSaat();
+  setInterval(ttSaat, 1000);
+
+  /* ---------- Günlük anons ---------- */
+  function anonsYaz(){
+    var a = S("anons");
+    var gun = Math.floor(Date.now() / 86400000);
+    document.getElementById("anons-metin").textContent =
+      a[gun % a.length] + "   ···   " + a[(gun + 3) % a.length];
+  }
+  anonsYaz();
+
+  /* ---------- Saatlik karar (Codex varyantından uyarlandı) ---------- */
+  var kararDurum = document.getElementById("karar-durum");
+  var btnBeklet = document.getElementById("btn-beklet");
+  var btnCekil = document.getElementById("btn-cekil");
+  var cekilOnay = false;
+  function buSaat(){ return String(Math.floor(Date.now() / 3600000)); }
+  function hakKullanildi(){
+    try { return localStorage.getItem("kuyruk-karar-saat") === buSaat(); } catch(e){ return false; }
+  }
+  function hakKilitle(){
+    try { localStorage.setItem("kuyruk-karar-saat", buSaat()); } catch(e){}
+    btnBeklet.disabled = true; btnCekil.disabled = true;
+  }
+  function sonrakiHak(){
+    var d = new Date(Date.now() + 3600000);
+    return iki(d.getHours()) + ":00";
+  }
+  function kararYenile(){
+    if (hakKullanildi()){
+      btnBeklet.disabled = true; btnCekil.disabled = true;
+      kararDurum.textContent = S("kullanildi") + sonrakiHak();
+    } else {
+      kararDurum.textContent = S("hazir");
+    }
+  }
+  kararYenile();
+  btnBeklet.addEventListener("click", function(){
+    hakKilitle();
+    kararDurum.textContent = S("kaydedildi");
+  });
+  btnCekil.addEventListener("click", function(){
+    if (!cekilOnay){
+      cekilOnay = true;
+      kararDurum.textContent = S("emin");
+      return;
+    }
+    biletNo = simdikiNumara() + 2400000 + Math.floor(Math.random() * 4900000);
+    try { localStorage.setItem("kuyruk-bilet", String(biletNo)); } catch(e){}
+    hakKilitle();
+    tazele();
+    kararDurum.textContent = S("cekildi");
+  });
+
+  /* ---------- Kayıt (mock — backend bağlanınca değişecek) ---------- */
+  var mesaj = document.getElementById("mesaj95");
+  document.getElementById("tamam").addEventListener("click", function(){
+    var e = document.getElementById("eposta").value.trim();
+    mesaj.style.display = "block";
+    if (!e || e.indexOf("@") < 1){
+      mesaj.textContent = S("hata34");
+      return;
+    }
+    mesaj.textContent = S("bagla1") + nokta(biletNo) + S("bagla2");
+  });
+  document.querySelector(".pencere .x").addEventListener("click", function(){
+    mesaj.style.display = "block";
+    mesaj.textContent = S("kapatilamaz");
+  });
+
+  /* ---------- Gizli bağlantı ---------- */
+  var giz = 0;
+  document.getElementById("gizli").addEventListener("click", function(ev){
+    ev.preventDefault();
+    giz++;
+    ev.target.textContent = giz < 3 ? SOZLUK[DIL].dom.gizli :
+      (giz < 5 ? S("gizOrta") : S("gizSon"));
+  });
+
+  /* ---------- Dil anahtarı ---------- */
+  function dilDegistir(d, ev){
+    ev.preventDefault();
+    if (d === DIL) return;
+    DIL = d;
+    try { localStorage.setItem("kuyruk-dil", d); } catch(e){}
+    cekilOnay = false;
+    dilUygula(); anonsYaz(); tazele(); sayim(); kararYenile();
+  }
+  document.getElementById("dil-tr").addEventListener("click", function(ev){ dilDegistir("tr", ev); });
+  document.getElementById("dil-en").addEventListener("click", function(ev){ dilDegistir("en", ev); });
+})();
+</script>
+</body>
+</html>
